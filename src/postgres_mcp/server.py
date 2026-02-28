@@ -662,10 +662,18 @@ async def main():
     elif args.transport == "sse":
         mcp.settings.host = args.sse_host
         mcp.settings.port = args.sse_port
+        # When binding to a non-localhost address, disable DNS rebinding protection
+        # (which was locked in at module init time for localhost). Network-level
+        # controls (e.g. Tailscale, firewall) are expected to restrict access instead.
+        if args.sse_host not in ("127.0.0.1", "localhost", "::1") and mcp.settings.transport_security:
+            mcp.settings.transport_security.enable_dns_rebinding_protection = False
         await mcp.run_sse_async()
     elif args.transport == "streamable-http":
         mcp.settings.host = args.streamable_http_host
         mcp.settings.port = args.streamable_http_port
+        # Same as above for streamable-http transport.
+        if args.streamable_http_host not in ("127.0.0.1", "localhost", "::1") and mcp.settings.transport_security:
+            mcp.settings.transport_security.enable_dns_rebinding_protection = False
         await mcp.run_streamable_http_async()
 
 
