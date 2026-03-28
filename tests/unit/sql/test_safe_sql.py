@@ -357,6 +357,96 @@ async def test_allowed_functions(safe_driver):
     await safe_driver.execute_query(query)
 
 
+@pytest.mark.parametrize(
+    "function_name",
+    [
+        "geometrytype",
+        "st_geometrytype",
+        "st_srid",
+        "st_setsrid",
+        "st_ndims",
+        "st_dimension",
+        "st_isvalid",
+        "st_isempty",
+        "st_x",
+        "st_y",
+        "st_z",
+        "st_npoints",
+        "st_numgeometries",
+        "st_area",
+        "st_length",
+        "st_perimeter",
+        "st_makepoint",
+        "st_point",
+        "st_geomfromtext",
+        "st_geogfromtext",
+        "st_geomfromewkt",
+        "st_astext",
+        "st_asewkt",
+        "st_asbinary",
+        "st_asewkb",
+        "st_asgeojson",
+        "st_envelope",
+        "st_extent",
+        "st_xmin",
+        "st_xmax",
+        "st_ymin",
+        "st_ymax",
+        "st_intersects",
+        "st_contains",
+        "st_within",
+        "st_dwithin",
+        "st_touches",
+        "st_crosses",
+        "st_overlaps",
+        "st_equals",
+        "st_disjoint",
+        "st_covers",
+        "st_coveredby",
+        "st_distance",
+        "st_distancesphere",
+        "st_distancespheroid",
+        "st_transform",
+        "st_centroid",
+        "st_pointonsurface",
+        "st_buffer",
+        "st_intersection",
+        "st_union",
+        "st_unaryunion",
+        "st_difference",
+        "st_collect",
+        "st_linemerge",
+        "st_startpoint",
+        "st_endpoint",
+        "st_dump",
+        "st_dumppoints",
+        "st_exteriorring",
+        "st_interiorringn",
+    ],
+)
+def test_postgis_functions_are_whitelisted(function_name):
+    """Test that requested PostGIS functions are present in the whitelist"""
+    assert function_name in SafeSqlDriver.ALLOWED_FUNCTIONS
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "SELECT '((0,0),(1,1))'::box && '((1,1),(2,2))'::box",
+        "SELECT '((0,0),(1,1))'::box &< '((1,1),(2,2))'::box",
+        "SELECT '((1,1),(2,2))'::box &> '((0,0),(1,1))'::box",
+        "SELECT '((0,0),(1,1))'::box << '((2,0),(3,1))'::box",
+        "SELECT '((2,0),(3,1))'::box >> '((0,0),(1,1))'::box",
+        "SELECT '(1,1)'::point ~= '(1,1)'::point",
+    ],
+)
+@pytest.mark.asyncio
+async def test_bbox_operators_are_allowed(safe_driver, mock_sql_driver, query):
+    """Test that common GiST bbox operators are allowed"""
+    await safe_driver.execute_query(query)
+    mock_sql_driver.execute_query.assert_awaited_with("/* crystaldba */ " + query, params=None, force_readonly=True)
+
+
 @pytest.mark.asyncio
 async def test_disallowed_functions(safe_driver):
     """Test that disallowed functions are blocked"""
