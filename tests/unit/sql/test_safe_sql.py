@@ -379,8 +379,19 @@ async def test_allowed_functions(safe_driver):
         "st_makepoint",
         "st_point",
         "st_geomfromtext",
+        "st_geometryfromtext",
         "st_geogfromtext",
+        "st_geographyfromtext",
+        "st_geomcollfromtext",
         "st_geomfromewkt",
+        "st_geomfromgeojson",
+        "st_geomfromwkb",
+        "st_geogfromwkb",
+        "st_geomfromewkb",
+        "st_geomfromgeohash",
+        "st_geomfromgml",
+        "st_geomfromkml",
+        "st_geomfromtwkb",
         "st_astext",
         "st_asewkt",
         "st_asbinary",
@@ -427,6 +438,35 @@ async def test_allowed_functions(safe_driver):
 def test_postgis_functions_are_whitelisted(function_name):
     """Test that requested PostGIS functions are present in the whitelist"""
     assert function_name in SafeSqlDriver.ALLOWED_FUNCTIONS
+
+
+@pytest.mark.asyncio
+async def test_select_with_geomfromgeojson_cte(safe_driver, mock_sql_driver):
+    """Test that GeoJSON geometry constructors are allowed in CTEs"""
+    query = """
+    WITH asset AS (
+        SELECT ST_SetSRID(
+            ST_GeomFromGeoJSON('{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,2],[0,0]]]}'),
+            4326
+        ) AS geom
+    )
+    SELECT ST_AsText(geom) AS asset_wkt
+    FROM asset
+    """
+    await safe_driver.execute_query(query)
+    mock_sql_driver.execute_query.assert_awaited_once_with("/* crystaldba */ " + query, params=None, force_readonly=True)
+
+
+@pytest.mark.asyncio
+async def test_select_with_geom_input_constructors(safe_driver, mock_sql_driver):
+    """Test that other read-only geometry input constructors are allowed"""
+    query = """
+    SELECT
+        ST_AsText(ST_GeomCollFromText('GEOMETRYCOLLECTION(POINT(0 0))')) AS geomcoll_wkt,
+        ST_AsText(ST_GeomFromGeoHash('9q8yy')) AS geohash_geom
+    """
+    await safe_driver.execute_query(query)
+    mock_sql_driver.execute_query.assert_awaited_once_with("/* crystaldba */ " + query, params=None, force_readonly=True)
 
 
 @pytest.mark.parametrize(
